@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Smart Irrigation — ML Control Panel</title>
+<style>
+  :root{
+    --bg: #0b1020;
+    --card: #121a33;
+    --text: #e8eefc;
+    --muted:#9fb0d4;
+    --accent:#7aa2ff;
+    --good: #2ecc71;
+    --warn: #f1c40f;
+    --bad:  #e74c3c;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    background: radial-gradient(1200px 800px at 80% -10%, #13224a 0%, var(--bg) 40%) no-repeat fixed;
+    color: var(--text);
+    min-height:100dvh; padding:28px;
+  }
+  .wrap{
+    max-width:1200px; margin:0 auto; display:grid; gap:20px;
+    grid-template-columns: 1fr;
+  }
+  .header{
+    display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap;
+  }
+  .brand{
+    display:flex; gap:14px; align-items:center;
+  }
+  .logo{
+    width:40px; height:40px; border-radius:12px; background: linear-gradient(135deg,#6ce7ff,#7aa2ff);
+    box-shadow: 0 10px 30px rgba(122,162,255,0.35);
+  }
+  .title{font-weight:800; font-size:20px; margin:0}
+  .muted{color:var(--muted); font-size:13px; margin:2px 0 0}
+  .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .input{
+    background:#0f1834; border:1px solid rgba(255,255,255,0.08);
+    color:var(--text); border-radius:12px; padding:10px 12px; font-size:14px; min-width:220px;
+  }
+  .btn{
+    background: linear-gradient(90deg,#7aa2ff,#67ffd2);
+    color:#0a122c; font-weight:800; border:none; padding:10px 14px; border-radius:12px; cursor:pointer;
+    box-shadow: 0 10px 25px rgba(122,162,255,0.25); transition: transform .04s ease;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn.secondary{
+    background:#0f1834; color:var(--text); border:1px solid rgba(255,255,255,0.1);
+  }
+  .grid{
+    display:grid; gap:20px;
+    grid-template-columns: 360px 1fr;
+  }
+  .card{
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent 30%) , var(--card);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:22px; padding:18px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .card h3{margin:0 0 6px; font-size:16px}
+  .kv{display:grid; grid-template-columns: 140px 1fr; gap:6px 10px; font-size:14px; margin-top:6px}
+  .kv div:nth-child(odd){ color:var(--muted) }
+
+  /* Gauge */
+  .gauge{
+    --thirst: 0;          /* 0..100 */
+    --angle: calc(var(--thirst) * 3.6deg);
+    --hue: calc(120 - (var(--thirst)*1.2)); /* 120=green -> 0=red */
+    width: 280px; height: 280px; border-radius: 50%;
+    background:
+      conic-gradient(hsl(var(--hue) 90% 52%) 0deg var(--angle),
+                     rgba(255,255,255,0.08) var(--angle) 360deg);
+    display:grid; place-items:center; position:relative; margin:10px auto;
+  }
+  .gauge::before{
+    content:"";
+    position:absolute; inset:14px; border-radius:50%;
+    background: radial-gradient(150px 120px at 50% 20%, rgba(255,255,255,0.08), transparent 40%) , #0e1633;
+    border:1px solid rgba(255,255,255,0.06);
+    box-shadow: inset 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .readout{ position:relative; text-align:center; }
+  .readout .big{
+    font-size:48px; font-weight:900; letter-spacing:0.5px;
+    background: linear-gradient(180deg, #fff, #b8c8ff 70%);
+    -webkit-background-clip: text; background-clip:text; color:transparent;
+    text-shadow: 0 6px 30px rgba(122,162,255,0.15);
+    line-height: 1.1;
+  }
+  .readout .label{color:var(--muted); font-size:13px; margin-top:-6px}
+  .badges{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:10px}
+  .badge{
+    padding:6px 10px; border-radius:999px; font-size:12px;
+    background:rgba(122,162,255,0.10); border:1px solid rgba(122,162,255,0.35);
+  }
+  .status{
+    padding:6px 10px; border-radius:8px; font-size:12px; font-weight:800; display:inline-block;
+  }
+  .ok{ background: rgba(46,204,113,0.15); border:1px solid rgba(46,204,113,0.5); }
+  .warn{ background: rgba(241,196,15,0.15); border:1px solid rgba(241,196,15,0.5); }
+  .bad{ background: rgba(231,76,60,0.15); border:1px solid rgba(231,76,60,0.5); }
+
+  .controls{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+  .btn.on { background: linear-gradient(90deg,#67ffd2,#7aa2ff); color:#0a122c; }
+  .btn.off{ background:#2b2f43; color:#fff; border:1px solid rgba(255,255,255,0.1) }
+
+  .toggle { display:flex; align-items:center; gap:8px; }
+  .switch{
+    width:48px; height:28px; background:#2b355d; border-radius:999px; position:relative; cursor:pointer; border:1px solid rgba(255,255,255,0.15);
+  }
+  .switch::after{
+    content:""; position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%; background:#fff; transition: left .15s ease;
+  }
+  .switch.on{ background: linear-gradient(90deg,#67ffd2,#7aa2ff); }
+  .switch.on::after{ left:22px; }
+
+  .spark{
+    height:170px; background: #0e1632; border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px; padding:10px; position:relative; overflow:hidden;
+  }
+  .spark svg{width:100%; height:100%}
+  .legend{display:flex; gap:12px; font-size:12px; color:var(--muted); margin-top:8px; flex-wrap:wrap}
+  .dot{width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px}
+  .dot.moist{background:#40e0d0} .dot.thirst{background:#ff7b6e} .dot.prob{background:#9f7bff}
+  .dot.pump{background:#67ffd2}
+
+  .pill{
+    font-size:12px; color:#0a122c; background: linear-gradient(90deg,#67ffd2,#7aa2ff);
+    padding:6px 10px; border-radius:999px; border: none; font-weight:700; letter-spacing:.3px;
+  }
+  .small{ font-size:12px; color: var(--muted); }
+
+  @media (max-width: 980px){
+    .grid{ grid-template-columns: 1fr; }
+    .gauge{ width: 240px; height: 240px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <div class="title">Smart Irrigation — ML Control Panel</div>
+          <p class="muted" id="modelInfo">Loading model…</p>
+        </div>
+      </div>
+      <div class="row">
+        <input class="input" id="areaInput" value="area-tn-001" />
+        <button class="btn" id="applyArea">Apply Area</button>
+        <div class="toggle">
+          <span class="small">Auto Mode</span>
+          <div class="switch" id="autoSwitch" title="Toggle auto mode"></div>
+        </div>
+        <span class="pill" id="thrPill">thr: 0.50</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Left column: Gauge & Controls -->
+      <div class="card">
+        <h3>Soil Thirst</h3>
+        <p class="muted">How thirsty is the soil right now?</p>
+        <div class="gauge" id="gauge" style="--thirst:0">
+          <div class="readout">
+            <div class="big"><span id="thirstPct">0</span>%</div>
+            <div class="label"><span id="moistPct">100</span>% moisture</div>
+            <div class="badges">
+              <div class="badge"><strong id="feelTxt">Hydrated</strong></div>
+              <div class="badge">Area: <span id="areaTxt">area-tn-001</span></div>
+              <div class="badge"><span id="tsTxt">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn on"  id="btnPumpOn">Pump ON</button>
+          <button class="btn off" id="btnPumpOff">Pump OFF</button>
+        </div>
+
+        <div style="margin-top:12px">
+          <span id="statusBadge" class="status ok">OK</span>
+          <span class="small" id="latestNote"></span>
+        </div>
+
+        <div class="kv" style="margin-top:14px">
+          <div>Model p(pump):</div><div><strong id="probTxt">—</strong></div>
+          <div>Decision:</div><div><strong id="decisionTxt">—</strong></div>
+          <div>Last Pump:</div><div><span id="lastPumpTxt">0</span></div>
+        </div>
+      </div>
+
+      <!-- Right column: Inputs & History -->
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+          <div>
+            <h3>Live Inputs</h3>
+            <p class="muted" style="margin-top:0">Temp / Humidity / Water Level / NPK & history (last 60 min)</p>
+          </div>
+          <div class="row">
+            <select class="input" id="minutesSel" style="min-width:120px">
+              <option value="15">15 min</option>
+              <option value="30">30 min</option>
+              <option value="60" selected>60 min</option>
+              <option value="180">3 hours</option>
+            </select>
+            <button class="btn secondary" id="refreshBtn">Refresh</button>
+          </div>
+        </div>
+
+        <div class="kv">
+          <div>Temperature</div><div><span id="tempTxt">—</span> °C</div>
+          <div>Humidity</div><div><span id="rhTxt">—</span> %</div>
+          <div>Water Level</div><div><span id="levelTxt">—</span> %</div>
+          <div>N / P / K</div><div><span id="npkTxt">—</span> ppm</div>
+        </div>
+
+        <div class="spark" style="margin-top:12px">
+          <svg id="sparkSvg" viewBox="0 0 800 170" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gradMoist" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#40e0d0"/><stop offset="100%" stop-color="#2fbdb0"/>
+              </linearGradient>
+              <linearGradient id="gradThirst" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#ff7b6e"/><stop offset="100%" stop-color="#db655a"/>
+              </linearGradient>
+              <linearGradient id="gradProb" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#b899ff"/><stop offset="100%" stop-color="#9f7bff"/>
+              </linearGradient>
+            </defs>
+            <!-- axes -->
+            <line x1="0" y1="160" x2="800" y2="160" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+            <line x1="0" y1="10"  x2="800" y2="10"  stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <!-- pump bands -->
+            <g id="pumpBands"></g>
+            <!-- data -->
+            <path id="pathMoist"  d="" fill="none" stroke="url(#gradMoist)"  stroke-width="3"/>
+            <path id="pathThirst" d="" fill="none" stroke="url(#gradThirst)" stroke-width="2"/>
+            <path id="pathProb"   d="" fill="none" stroke="url(#gradProb)"  stroke-width="2" stroke-dasharray="6 4"/>
+          </svg>
+        </div>
+        <div class="legend">
+          <span><span class="dot moist"></span>Moisture %</span>
+          <span><span class="dot thirst"></span>Thirst % (100 − moisture)</span>
+          <span><span class="dot prob"></span>Model p(pump)</span>
+          <span><span class="dot pump"></span>Pump ON bands</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // --------- Elements ---------
+  const areaInput   = document.getElementById('areaInput');
+  const applyBtn    = document.getElementById('applyArea');
+  const autoSwitch  = document.getElementById('autoSwitch');
+  const thrPill     = document.getElementById('thrPill');
+  const modelInfoEl = document.getElementById('modelInfo');
+
+  const thirstEl = document.getElementById('thirstPct');
+  const moistEl  = document.getElementById('moistPct');
+  const feelTxt  = document.getElementById('feelTxt');
+  const areaTxt  = document.getElementById('areaTxt');
+  const tsTxt    = document.getElementById('tsTxt');
+  const gauge    = document.getElementById('gauge');
+
+  const btnOn    = document.getElementById('btnPumpOn');
+  const btnOff   = document.getElementById('btnPumpOff');
+  const statusBadge = document.getElementById('statusBadge');
+  const latestNote  = document.getElementById('latestNote');
+  const probTxt  = document.getElementById('probTxt');
+  const decisionTxt = document.getElementById('decisionTxt');
+  const lastPumpTxt = document.getElementById('lastPumpTxt');
+
+  const tempTxt = document.getElementById('tempTxt');
+  const rhTxt   = document.getElementById('rhTxt');
+  const levelTxt= document.getElementById('levelTxt');
+  const npkTxt  = document.getElementById('npkTxt');
+
+  const minutesSel = document.getElementById('minutesSel');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  const svg       = document.getElementById('sparkSvg');
+  const pathMoist = document.getElementById('pathMoist');
+  const pathThirst= document.getElementById('pathThirst');
+  const pathProb  = document.getElementById('pathProb');
+  const pumpBands = document.getElementById('pumpBands');
+
+  // --------- State ---------
+  let areaId = areaInput.value.trim();
+  let autoMode = false;
+  let threshold = 0.5;
+
+  let series = []; // {ts: Date, moist, prob, pred_on}
+
+  // --------- Helpers ---------
+  function feelText(thirst){
+    if (thirst >= 70) return "Parched";
+    if (thirst >= 40) return "Drying";
+    if (thirst >= 20) return "Comfortable";
+    return "Hydrated";
+  }
+  function fmtN(x, digits=1){
+    if (x === null || x === undefined || Number.isNaN(x)) return "—";
+    return Number(x).toFixed(digits);
+  }
+  function setStatus(kind, msg){
+    statusBadge.className = "status " + kind;
+    statusBadge.textContent = msg;
+  }
+  function updateGauge(moist, ts){
+    const m = Math.max(0, Math.min(100, moist ?? 0));
+    const thirst = Math.round(100 - m);
+    thirstEl.textContent = thirst;
+    moistEl.textContent  = Math.round(m);
+    feelTxt.textContent  = feelText(thirst);
+    gauge.style.setProperty('--thirst', thirst);
+    areaTxt.textContent  = areaId;
+    tsTxt.textContent    = ts ? new Date(ts).toLocaleString() : "—";
+  }
+
+  function renderSpark(){
+    const W=800, H=150, padTop=10, padBottom=10;
+    if (series.length < 2){
+      pathMoist.setAttribute('d','');
+      pathThirst.setAttribute('d','');
+      pathProb.setAttribute('d','');
+      pumpBands.innerHTML = "";
+      return;
+    }
+    const xs = series.map((_,i)=> i*(W/(series.length-1)));
+    const yFromPct = v => H - (v/100)*(H-padTop);
+    const ysM = series.map(s=> yFromPct(s.moist));
+    const ysT = series.map(s=> yFromPct(100 - s.moist));
+    const ysP = series.map(s=> yFromPct((s.prob ?? 0)*100));
+
+    const pathify = (ys)=> ys.map((y,i)=> (i? 'L':'M') + xs[i].toFixed(2)+','+ (y+padTop).toFixed(2)).join(' ');
+    pathMoist.setAttribute('d', pathify(ysM));
+    pathThirst.setAttribute('d', pathify(ysT));
+    pathProb.setAttribute('d', pathify(ysP));
+
+    // pump ON translucent bands
+    pumpBands.innerHTML = "";
+    let i=0;
+    while (i < series.length){
+      if (series[i].pred_on == 1){
+        let j=i+1;
+        while (j<series.length && series[j].pred_on==1) j++;
+        const x1 = xs[i], x2 = xs[j-1];
+        const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        rect.setAttribute('x', x1.toFixed(2));
+        rect.setAttribute('y', 10);
+        rect.setAttribute('width', Math.max(2, (x2 - x1)).toFixed(2));
+        rect.setAttribute('height', H+padTop);
+        rect.setAttribute('fill', 'rgba(103,255,210,0.12)');
+        rect.setAttribute('stroke', 'rgba(103,255,210,0.20)');
+        rect.setAttribute('stroke-width', '1');
+        pumpBands.appendChild(rect);
+        i = j;
+      } else i++;
+    }
+  }
+
+  // --------- Networking ---------
+  async function ping(){
+    try{
+      const j = await (await fetch(`/api/ping`)).json();
+      modelInfoEl.textContent = j.model ? `Model: ${j.model}` : "Model: (fallback rules)";
+      autoMode = !!j.auto;
+      threshold = typeof j.thr === "number" ? j.thr : threshold;
+      autoSwitch.classList.toggle('on', autoMode);
+      thrPill.textContent = `thr: ${threshold.toFixed(2)}`;
+    }catch(e){
+      modelInfoEl.textContent = "Model: (server offline?)";
+    }
+  }
+
+  async function loadHistory(){
+    try{
+      const mins = parseInt(minutesSel.value,10) || 60;
+      const j = await (await fetch(`/api/history?area_id=${encodeURIComponent(areaId)}&minutes=${mins}`)).json();
+      if (!j.ok){ series = []; renderSpark(); return; }
+      series = (j.data || []).map(d=>({
+        ts: d.ts,
+        moist: +d.moist,
+        prob: (d.pred_prob==null? null : +d.pred_prob),
+        pred_on: (d.pred_on==null? 0 : +d.pred_on)
+      }));
+      renderSpark();
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+  async function tick(){
+    try{
+      const j = await (await fetch(`/api/latest?area_id=${encodeURIComponent(areaId)}`)).json();
+      if (j.ok && j.data){
+        const d = j.data;
+        // update cards
+        updateGauge(+d.moist, d.ts);
+        tempTxt.textContent  = fmtN(d.temp_c,1);
+        rhTxt.textContent    = fmtN(d.rh,1);
+        levelTxt.textContent = fmtN(d.water_level,1);
+        npkTxt.textContent   = `${fmtN(d.N,1)} / ${fmtN(d.P,1)} / ${fmtN(d.K,1)}`;
+        lastPumpTxt.textContent = d.last_pump ?? 0;
+
+        const prob = (d.pred_prob==null? null : +d.pred_prob);
+        probTxt.textContent = (prob==null ? "—" : (prob*100).toFixed(1) + "%");
+        const decide = (d.pred_on==null? null : +d.pred_on);
+        decisionTxt.textContent = decide==null ? "—" : (decide===1 ? "PUMP ON" : "PUMP OFF");
+        decisionTxt.style.color = decide===1 ? "var(--good)" : "var(--text)";
+
+        // status
+        const m = +d.moist;
+        if (m >= 70) setStatus("ok","Hydrated");
+        else if (m >= 40) setStatus("warn","Drying");
+        else setStatus("bad","Parched");
+        latestNote.textContent = d.ts ? `Updated ${new Date(d.ts).toLocaleTimeString()}` : "";
+
+        // push to series for spark
+        if (prob!=null || decide!=null){
+          series.push({ts:d.ts, moist:+d.moist, prob:prob, pred_on:(decide??0)});
+          if (series.length>300) series.shift();
+          renderSpark();
+        }
+      } else {
+        setStatus("warn","No data yet");
+      }
+    }catch(e){
+      console.error(e);
+      setStatus("warn","Error fetching latest");
+    }
+  }
+
+  async function sendCmd(order){
+    try{
+      const res = await fetch(`/api/cmd?area_id=${encodeURIComponent(areaId)}&order=${order}`, {method:"POST"});
+      const j = await res.json();
+      if (j.ok){
+        setStatus(order? "ok":"warn", order? "Manual: Pump ON" : "Manual: Pump OFF");
+      } else {
+        setStatus("bad","Command failed");
+      }
+    }catch(e){
+      setStatus("bad","Command error");
+    }
+  }
+
+  async function setAuto(on){
+    try{
+      const res = await fetch(`/api/auto?enabled=${on?1:0}`, {method:"POST"});
+      const j = await res.json();
+      autoMode = !!j.auto;
+      autoSwitch.classList.toggle('on', autoMode);
+    }catch(e){}
+  }
+
+  // --------- Events ---------
+  applyBtn.addEventListener('click', ()=>{
+    areaId = areaInput.value.trim() || 'area-tn-001';
+    areaTxt.textContent = areaId;
+    series = [];
+    loadHistory();
+  });
+
+  btnOn.addEventListener('click', ()=> sendCmd(1));
+  btnOff.addEventListener('click', ()=> sendCmd(0));
+  refreshBtn.addEventListener('click', ()=> loadHistory());
+
+  autoSwitch.addEventListener('click', ()=>{
+    const desired = !autoMode;
+    setAuto(desired);
+  });
+
+  // --------- Boot ---------
+  (async function init(){
+    await ping();
+    await loadHistory();
+    updateGauge(0, null);
+    setInterval(ping, 20000);
+    setInterval(tick, 2000);
+  })();
+</script>
+</body>
+</html>
