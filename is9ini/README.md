@@ -1,90 +1,189 @@
-# Welcome to your Expo app 👋
+# Smart Irrigation System – *Mabrouka’s Smart Farm*
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> **An intelligent irrigation management system** that monitors soil moisture, predicts weather, and automates irrigation to optimize water usage and support sustainable agriculture.  
+> Built with **React Native (frontend)** and **FastAPI (backend)**.
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Project Overview
 
-   ```bash
-   npm install
-   ```
+This project is composed of **four main missions**, each designed to empower the farmer *Mabrouka* with smart insights and automation for her land.
 
-2. Start the app
+### 🌱 Mission 1 – Dashboard for Mabrouka
 
-   ```bash
-   npx expo start
-   ```
+Create an interactive dashboard to help Mabrouka:
+- Visualize **real-time soil moisture** levels.  
+- Know if her land is **thirsty or well-irrigated**.  
+- Monitor data through an intuitive **React Native mobile interface**.
 
-   The mobile client expects a FastAPI backend. If you run the Expo app on a device, make sure the API URL is reachable from that device (see [Configure the API URL](#configure-the-api-url)).
+> 💡 The dashboard acts as Mabrouka’s control center to understand the current condition of her soil.
 
-## Run the backend
+---
 
-1. Create a virtual environment (optional but recommended) and install dependencies:
+### 🤖 Mission 2 – Teaching the Machine (Smart Irrigation Logic)
 
-   ```bash
-   cd server
-   pip install -r requirements.txt
-   ```
+Train the system to **understand when the soil is thirsty** and decide when to irrigate, using simple rule-based logic.
 
-2. Start the FastAPI server (default port `8000`):
+**Irrigation Decision Rules:**
+- If soil moisture is **below a defined threshold → Open pump** (start irrigation).  
+- If soil moisture is **above the threshold → Stop pump** (no irrigation needed).
 
-   ```bash
-   uvicorn app:app --reload --host 0.0.0.0 --port 8000
-   ```
+> ✅ The system supports both **manual mode** (Mabrouka decides) and **automatic mode** (the system controls irrigation).
 
-   The server subscribes to the Wokwi MQTT feed, exposes REST endpoints (`/api/*`) and a WebSocket at `/ws/telemetry`.
+---
 
-   - `POST /api/set-mode?area_id=<zone-id>&mode=auto|manual` toggles the per-zone automation. Auto mode follows the 70% / 30% dryness thresholds; manual mode leaves the pump button in full control.
+### 📲 Mission 3 – Smart Notifications & Pump Status
 
-## Configure the API URL
+Provide Mabrouka with real-time feedback about her land and irrigation system:
 
-The Expo app reads the backend URL from the `EXPO_PUBLIC_API_URL` environment variable (fallback: `http://localhost:8000`).
+- Display which **pumps are ON or OFF**.  
+- Send **SMS notifications** through [**TextBee.dev**](https://textbee.dev) when:
+  - Soil becomes dry (irrigation needed).  
+  - Pump status changes (ON/OFF).  
+- Notify Mabrouka even when she is **offline or not using the app**.
 
-Set the variable before launching Expo so the front-end can reach your FastAPI server:
+> 📡 Ensures Mabrouka never misses a critical irrigation alert.
 
+---
+
+### ☁️ Mission 4 – Weather Forecast Integration
+
+Integrate the **OpenWeatherMap API** to forecast:
+- 🌧️ Rainfall (mm)  
+- 🌡️ Temperature (°C)  
+- 💧 Humidity (%)  
+
+**Irrigation Decision Based on Forecast:**
+- If **rainfall is expected**, irrigation is delayed.  
+- The system estimates **how many days to skip** based on expected rainfall amount.
+
+> 🔮 Predictive irrigation helps conserve water and prevent overwatering.
+
+---
+
+## 🧠 System Architecture
+
+    ┌────────────────────┐
+    │      Sensors       │
+    │   (Soil Moisture,  │
+    │    Temperature,    │
+    │    Humidity)       │
+    └─────────┬──────────┘
+              │
+              ▼
+      ┌──────────────── ┐
+      │     ESP32       │
+      │ Microcontroller │
+      └─────────────────┘
+              │ Wi-Fi
+              ▼
+     ┌───────────────────┐
+     │   FastAPI Server  │
+     │ (Python Backend)  │
+     └────────┬──────────┘
+              │
+              ▼
+     ┌───────────────────┐
+     │  React Native     │
+     │  Mobile App (UI)  │
+     └───────────────────┘
+              │
+              ▼
+     ┌──────────────────┐
+     │ TextBee.dev API  │
+     │ (SMS Alerts)     │
+     └──────────────────┘
+
+
+     
+---
+
+## ⚙️ How It Works
+
+1. **ESP32** connects to Wi-Fi and sends soil and weather sensor data to the **FastAPI backend**.  
+2. The backend applies decision logic to determine if irrigation is needed.  
+3. **AutoMode logic:**
+   - Turns **ON** the pump when:
+     - Soil is dry **AND** (Temperature is high **OR** Humidity is low)  **AND** No rain detected.
+   - Turns **OFF** the pump otherwise.
+4. The **React Native dashboard** displays:
+   - Real-time soil moisture readings  
+   - Pump status (ON/OFF)  
+   - Weather forecast  
+   - Irrigation recommendations  
+5. **TextBee.dev** sends SMS alerts to Mabrouka when:
+   - Irrigation is required  
+   - Pump state changes  
+   - Forecast indicates potential rain  
+
+---
+
+## 🧩 Tech Stack
+
+| Layer | Technology | Description |
+|-------|-------------|-------------|
+| **Frontend** | React Native | Mobile dashboard for the farmer |
+| **Backend** | FastAPI | Python-based API handling sensor data and logic |
+| **Hardware** | ESP32 + Sensors | Measures soil moisture, humidity, temperature |
+| **Weather Data** | OpenWeatherMap API | Provides rainfall, humidity, and temperature forecast |
+| **Notifications** | TextBee.dev | Sends SMS alerts and irrigation warnings |
+
+---
+
+## 🔔 Features Summary
+
+✅ Real-time soil monitoring  
+✅ Automatic or manual irrigation control  
+✅ Weather-based irrigation scheduling  
+✅ SMS notifications via TextBee.dev  
+✅ Mobile-friendly dashboard  
+
+---
+
+## 💻 Installation & Running the Project
+
+### Client (React Native)
 ```bash
-EXPO_PUBLIC_API_URL=http://192.168.1.20:8000 npx expo start
+# Install dependencies
+npm install
+
+# Start the development server
+npm run start
+
 ```
-
-On Windows PowerShell:
-
-```powershell
-$env:EXPO_PUBLIC_API_URL = "http://192.168.1.20:8000"
-npx expo start
-```
-
-If you run on a physical device via Expo Go, replace the host with your computer's LAN IP.
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+### Server (FastAPI)
 ```bash
-npm run reset-project
+# Navigate to server folder
+cd server
+
+# Activate virtual environment
+./venv/Scripts/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run FastAPI server
+uvicorn app:app --reload
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+🌐 Wokwi Simulation
 
-## Learn more
+Test the ESP32 and sensors online using this Wokwi project:
+https://wokwi.com/projects/446488612639019009
 
-To learn more about developing your project with Expo, look at the following resources:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 🧭 Future Improvements
 
-## Join the community
+- Integrate a **database** to log sensor data and irrigation history.  
+- Add **AI/ML model** for adaptive threshold adjustment.  
+- Enable **multi-field support** for larger farms.  
+- Include **data visualization and analytics** (trends over time).  
+- Add **voice assistant or chatbot** for easier interaction.
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 👩‍🌾 Author
+
+**Developed by:** *WIIIIIIOUUUU*    
+**Purpose:** Smart irrigation solution for smallholder farmers like Mabrouka.
+
